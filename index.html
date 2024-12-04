@@ -9,6 +9,7 @@
         body {
             font-family: Arial, sans-serif;
             color: #454545;
+            min-width: fit-content;
         }
         a {
             color: #1077AA;
@@ -16,21 +17,39 @@
         a:visited {
             color: hotpink;
         }
+
         .chart {
-            width: 70%;
             padding: 1em;
         }
+
         .btn {
             display: inline-block;
             padding: 0.5em 1em;
             margin: 0.5em;
-            border-radius: 0.5em;
-            border: 1px solid #454545;
+            border-radius: 0.3em;
             cursor: pointer;
+            border: 1px solid #454545;
+            user-select: none; /* standard syntax */
+            -webkit-user-select: none; /* webkit (safari, chrome) browsers */
+            -moz-user-select: none; /* mozilla browsers */
+            -khtml-user-select: none; /* webkit (konqueror) browsers */
+            -ms-user-select: none; /* IE10+ */
         }
+
         .btn.active {
             background-color: #454545;
             color: white;
+        }
+
+        .year {
+            opacity: 0.5; /* Faded effect when not active */
+            transition: opacity 0.3s ease; /* Smooth transition */
+            color: white;
+        }
+        .year:hover, 
+        .year:focus, 
+        .year.selected {
+            opacity: 1; /* Original color when active */
         }
         </style>
 
@@ -42,9 +61,12 @@
         </header>
         <main>
             <div>
-                <div id="both-btn" class="btn active">⭐⭐ only</div>
-                <div id="all-btn" class="btn">⭐⭐ + ⭐</div>
-                <div id="single-btn" class="btn">⭐ only</div>
+                <div>
+                    <div id="both-btn" class="btn active">⭐⭐ only</div>
+                    <div id="all-btn" class="btn">⭐⭐ + ⭐</div>
+                    <div id="single-btn" class="btn">⭐ only</div>
+                    <div id="years"></div>
+                </div>
                 <div class="chart">
                     <canvas id="myChart"></canvas>
                 </div>
@@ -52,38 +74,80 @@
             <p>Data is fetched from the <a href="https://adventofcode.com/">Advent of Code</a>.</p>
         </main>
     </body>
+
     <script>
+        const years = [2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024].sort((a, b) => b - a);
+        let activeYears = [2024, 2023, 2022];
+        const COLORS = [
+            "rgb(31, 119, 180)",
+            "rgb(255, 127, 14)",
+            "rgb(44, 160, 44)",
+            "rgb(214, 39, 40)",
+            "rgb(148, 103, 189)",
+            "rgb(140, 86, 75)",
+            "rgb(227, 119, 194)",
+            "rgb(127, 127, 127)",
+            "rgb(189, 189, 34)",
+            "rgb(23, 190, 207)"
+        ];
+        const yearsDiv = document.getElementById('years');
+        const bothBtn = document.getElementById('both-btn');
+        const allBtn = document.getElementById('all-btn');
+        const singleBtn = document.getElementById('single-btn');
         const ctx = document.getElementById('myChart');
+
+        yearsDiv.innerHTML = years.map((year, i) => `<div id="${year}-btn" class="btn year" style="background-color:${COLORS[i]}">${year}</div>`).join('');
+        activeYears.forEach(year => {
+            const yearBtn = document.getElementById(`${year}-btn`);
+            yearBtn.classList.add('selected');
+        });
+        
+        ctx.height = 500;
+        ctx.width = 800;
         const sessionId = new Date().getTime();
         fetch('/static/advent_of_code.json')
             .then(response => response.json())
             .then(data => {
-                const days = [... new Set(data.map(d => d.day))].sort((a, b) => a-b);
+                const days = [... new Set(data.map(d => d.day))].sort((a, b) => b - a);
                 const stars = [... new Set(data.map(d => d.year))].map(
                     year => {
                         const data_ = data.filter(d => d.year === year)
-                        data_.sort((a,b) => a.day - b.day)
-                        return data_
+                        data_.sort((a,b) => b.day - a.day)
+                        const data_with_zeros = days.map(day => data_.find(d => d.day === day) || {day: day, year: year, first: 0, both: 0})
+                        return data_with_zeros
                     })
+                stars.sort((a, b) => b[0].year - a[0].year)
 
                 const myChart = new Chart(ctx, {
                     type: 'bar',
                     data: {
                         labels: days,
-                        datasets: 
-                        stars.map(data_ => {
+                        datasets: stars.map((data_, i) => {
                             return {
                                 label: data_[0].year,
                                 data: data_.map(d => d.both),
-                                borderWidth: 1
+                                hidden: !activeYears.includes(data_[0].year),
+                                borderWidth: 0.5,
+                                backgroundColor: COLORS[i],
                             }
                         })
                     },
                     options: {
+                        indexAxis: 'y',
+                        responsive: false,
                         plugins: {
                             title: {
                                 display: true,
                                 text: 'Number of people who have completed both puzzles'
+                            },
+                            legend: {
+                                display: false,
+                            }
+                        },
+                        layout: {
+                            margin: {
+                                top: 10,
+                                bottom: 10,
                             }
                         },
                         scales: {
@@ -91,67 +155,92 @@
                                 beginAtZero: true,
                                 title: {
                                     display: true,
-                                    text: '# of people'
+                                    text: 'Day'
                                 }
                             },
                             x: {
                                 title: {
                                     display: true,
-                                    text: 'Day'
+                                    text: '# of people'
                                 }
                             }
                         }
                     }
                 });
 
-                const bothBtn = document.getElementById('both-btn');
-                const allBtn = document.getElementById('all-btn');
-                const singleBtn = document.getElementById('single-btn');
+                years.forEach(year => {
+                    const yearBtn = document.getElementById(`${year}-btn`);
+                    yearBtn.addEventListener('click', () => {
+                        if (activeYears.includes(year)) {
+                            activeYears.splice(activeYears.indexOf(year), 1);
+                            yearBtn.classList.remove('selected');
+                        } else {
+                            activeYears.push(year);
+                            yearBtn.classList.add('selected');
+                        }
+                        myChart.data.datasets.forEach((dataset, i) => {
+                            dataset.hidden = !activeYears.includes(stars[i][0].year);
+                            dataset.backgroundColor = COLORS[i];
+                        });
+                        myChart.update();
+                        updatePageView();
+                    });
+
+                    yearBtn.addEventListener('dblclick', () => {
+                        activeYears = [year];
+                        years.forEach(y => {
+                            const yBtn = document.getElementById(`${y}-btn`);
+                            if (y === year) {
+                                yBtn.classList.add('selected');
+                            } else {
+                                yBtn.classList.remove('selected');
+                            }
+                        });
+                        myChart.data.datasets.forEach((dataset, i) => {
+                            dataset.hidden = !activeYears.includes(stars[i][0].year);
+                            dataset.backgroundColor = COLORS[i];
+                        });
+                        myChart.update();
+                        updatePageView();
+                    });
+                });
+                               
+                function refreshChart() {
+                    if (bothBtn.classList.contains('active')) {
+                        myChart.options.plugins.title.text = 'Number of people who have completed both puzzles';
+                        myChart.data.datasets = stars.map(data_ => ({data: data_.map(d => d.both)}));
+                    } else if (allBtn.classList.contains('active')) {
+                        myChart.options.plugins.title.text = 'Number of people who have completed at least one puzzle';
+                        myChart.data.datasets = stars.map(data_ => ({data: data_.map(d => d.both + d.first)}));
+                    } else if (singleBtn.classList.contains('active')) {
+                        myChart.options.plugins.title.text = 'Number of people who have completed only one puzzle';
+                        myChart.data.datasets = stars.map(data_ => ({data: data_.map(d => d.first)}));
+                    }
+                    myChart.data.datasets.forEach((dataset, i) => {
+                        dataset.hidden = !activeYears.includes(stars[i][0].year);
+                        dataset.backgroundColor = COLORS[i];
+                    });
+                    myChart.update();
+                    updatePageView();
+                }
 
                 bothBtn.addEventListener('click', () => {
-                    updatePageView();
                     bothBtn.classList.add('active');
                     allBtn.classList.remove('active');
                     singleBtn.classList.remove('active');
-                    myChart.options.plugins.title.text = 'Number of people who have completed both puzzles';
-                    myChart.data.datasets = stars.map(data_ => {
-                        return {
-                            label: data_[0].year,
-                            data: data_.map(d => d.both),
-                            borderWidth: 1
-                        }
-                    });
-                    myChart.update();
+                    refreshChart();
                 });
                 allBtn.addEventListener('click', () => {
-                    updatePageView();
                     allBtn.classList.add('active');
                     bothBtn.classList.remove('active');
                     singleBtn.classList.remove('active');
-                    myChart.options.plugins.title.text = 'Number of people who have completed at least one puzzle';
-                    myChart.data.datasets = stars.map(data_ => {
-                        return {
-                            label: data_[0].year,
-                            data: data_.map(d => d.both + d.first),
-                            borderWidth: 1
-                        }
-                    });
-                    myChart.update();
+                    refreshChart();
                 });
                 singleBtn.addEventListener('click', () => {
-                    updatePageView();
                     singleBtn.classList.add('active');
                     bothBtn.classList.remove('active');
                     allBtn.classList.remove('active');
-                    myChart.options.plugins.title.text = 'Number of people who have completed only one puzzle';
-                    myChart.data.datasets = stars.map(data_ => {
-                        return {
-                            label: data_[0].year,
-                            data: data_.map(d => d.first),
-                            borderWidth: 1
-                        }
-                    });
-                    myChart.update();
+                    refreshChart();
                 });
             });
 
