@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Advent Of Stats</title>
+        <link rel="icon" href="/favicon.ico">
+        <style>
+        body {
+            font-family: Arial, sans-serif;
+            color: #454545;
+        }
+        a {
+            color: #1077AA;
+        }
+        a:visited {
+            color: hotpink;
+        }
+        .chart {
+            width: 70%;
+            padding: 1em;
+        }
+        .btn {
+            display: inline-block;
+            padding: 0.5em 1em;
+            margin: 0.5em;
+            border-radius: 0.5em;
+            border: 1px solid #454545;
+            cursor: pointer;
+        }
+        .btn.active {
+            background-color: #454545;
+            color: white;
+        }
+        </style>
+
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    </head>
+    <body>
+        <header>
+            <h1>Advent Of Stats</h1>
+        </header>
+        <main>
+            <div>
+                <div id="both-btn" class="btn active">⭐⭐ only</div>
+                <div id="all-btn" class="btn">⭐⭐ + ⭐</div>
+                <div id="single-btn" class="btn">⭐ only</div>
+                <div class="chart">
+                    <canvas id="myChart"></canvas>
+                </div>
+            </div>
+            <p>Data is fetched from the <a href="https://adventofcode.com/">Advent of Code</a>.</p>
+        </main>
+    </body>
+    <script>
+        const ctx = document.getElementById('myChart');
+        const sessionId = new Date().getTime();
+        fetch('/static/advent_of_code.json')
+            .then(response => response.json())
+            .then(data => {
+                const days = [... new Set(data.map(d => d.day))].sort((a, b) => a-b);
+                const stars = [... new Set(data.map(d => d.year))].map(
+                    year => {
+                        const data_ = data.filter(d => d.year === year)
+                        data_.sort((a,b) => a.day - b.day)
+                        return data_
+                    })
+
+                const myChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: days,
+                        datasets: 
+                        stars.map(data_ => {
+                            return {
+                                label: data_[0].year,
+                                data: data_.map(d => d.both),
+                                borderWidth: 1
+                            }
+                        })
+                    },
+                    options: {
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Number of people who have completed both puzzles'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: '# of people'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Day'
+                                }
+                            }
+                        }
+                    }
+                });
+
+                const bothBtn = document.getElementById('both-btn');
+                const allBtn = document.getElementById('all-btn');
+                const singleBtn = document.getElementById('single-btn');
+
+                bothBtn.addEventListener('click', () => {
+                    bothBtn.classList.add('active');
+                    allBtn.classList.remove('active');
+                    singleBtn.classList.remove('active');
+                    myChart.options.plugins.title.text = 'Number of people who have completed both puzzles';
+                    myChart.data.datasets = stars.map(data_ => {
+                        return {
+                            label: data_[0].year,
+                            data: data_.map(d => d.both),
+                            borderWidth: 1
+                        }
+                    });
+                    myChart.update();
+                });
+                allBtn.addEventListener('click', () => {
+                    allBtn.classList.add('active');
+                    bothBtn.classList.remove('active');
+                    singleBtn.classList.remove('active');
+                    myChart.options.plugins.title.text = 'Number of people who have completed at least one puzzle';
+                    myChart.data.datasets = stars.map(data_ => {
+                        return {
+                            label: data_[0].year,
+                            data: data_.map(d => d.both + d.first),
+                            borderWidth: 1
+                        }
+                    });
+                    myChart.update();
+                });
+                singleBtn.addEventListener('click', () => {
+                    singleBtn.classList.add('active');
+                    bothBtn.classList.remove('active');
+                    allBtn.classList.remove('active');
+                    myChart.options.plugins.title.text = 'Number of people who have completed only one puzzle';
+                    myChart.data.datasets = stars.map(data_ => {
+                        return {
+                            label: data_[0].year,
+                            data: data_.map(d => d.first),
+                            borderWidth: 1
+                        }
+                    });
+                    myChart.update();
+                });
+            });
+        (function() {
+            const scriptURL = "https://script.google.com/macros/s/AKfycbzDepvNK5Khv22zMrF5-FF0EiDEGxBN_LjEdNz12wrIccP_3SzRGrQtWV9mHSB5j11b/exec";
+            fetch(scriptURL + "?userAgent=" + encodeURIComponent(navigator.userAgent) + "&sessionId=" + sessionId)
+                .then(response => response.text())
+                .then(data => {
+                    console.log("Page view logged:", data.viewCount);
+                })
+                .catch(error => console.error("Error logging page view:", error));
+        })();
+    </script>
+</html>
+

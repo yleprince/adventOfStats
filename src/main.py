@@ -10,7 +10,7 @@ def get_data(year: int):
     pre = soup.find('pre', class_='stats')
     a_ = pre.extract().find_all('a')
     columns = ("day", "both", "first")
-    texts = [{k:v for k, v in zip(columns, a.text.strip().split())} for a in a_]
+    texts = [{k:int(v) for k, v in zip(columns, a.text.strip().split())} for a in a_]
     df = pd.DataFrame(texts)
     df["year"] = year
     return df
@@ -22,4 +22,6 @@ if __name__ == '__main__':
         print("processing year: ", year, end="\r")
         data = get_data(year)
         df = pd.concat([df, data], ignore_index=True)
-    df.to_csv("/tmp/advent_of_code.csv", index=False)
+    #df.to_csv("/tmp/advent_of_code.csv", index=False)
+    df.to_json("/tmp/advent_of_code.json", orient="records")
+    print("Done ⭐")
