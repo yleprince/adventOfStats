@@ -109,6 +109,7 @@
                 const singleBtn = document.getElementById('single-btn');
 
                 bothBtn.addEventListener('click', () => {
+                    updatePageView();
                     bothBtn.classList.add('active');
                     allBtn.classList.remove('active');
                     singleBtn.classList.remove('active');
@@ -123,6 +124,7 @@
                     myChart.update();
                 });
                 allBtn.addEventListener('click', () => {
+                    updatePageView();
                     allBtn.classList.add('active');
                     bothBtn.classList.remove('active');
                     singleBtn.classList.remove('active');
@@ -137,6 +139,7 @@
                     myChart.update();
                 });
                 singleBtn.addEventListener('click', () => {
+                    updatePageView();
                     singleBtn.classList.add('active');
                     bothBtn.classList.remove('active');
                     allBtn.classList.remove('active');
@@ -151,15 +154,45 @@
                     myChart.update();
                 });
             });
-        (function() {
-            const scriptURL = "https://script.google.com/macros/s/AKfycbzDepvNK5Khv22zMrF5-FF0EiDEGxBN_LjEdNz12wrIccP_3SzRGrQtWV9mHSB5j11b/exec";
-            fetch(scriptURL + "?userAgent=" + encodeURIComponent(navigator.userAgent) + "&sessionId=" + sessionId)
+
+        const userIdCookieName = 'userId';
+        function generateUserId() {
+            return 'user-' + Math.random().toString(36).substr(2, 9) + '-' + Date.now();
+        }
+        function setCookie(name, value, days) {
+            const expires = new Date();
+            expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+            document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
+        }
+        function getCookie(name) {
+            const cookieValue = document.cookie
+                .split('; ')
+                .find(row => row.startsWith(`${name}=`))
+                ?.split('=')[1];
+            return cookieValue || null;
+        }
+
+        let userId = document.cookie
+            .split('; ')
+            .find(row => row.startsWith(`${userIdCookieName}=`))
+            ?.split('=')[1];
+
+        if (!userId) {
+            userId = generateUserId();
+            setCookie(userIdCookieName, userId, 365); // Store for 1 year
+        }
+
+        // Retrieve the User ID
+        userId = getCookie(userIdCookieName);
+
+        function updatePageView() {
+            const scriptURL = "https://script.google.com/macros/s/AKfycbx_OoU35qlawcj9N6z7nD29I9vBedAQv9aVPWzrqi8MLViDPp0vyaueNkm49tHM_FqV/exec";
+            fetch(scriptURL + "?userId="+encodeURIComponent(userId)+"&userAgent=" + encodeURIComponent(navigator.userAgent) + "&sessionId=" + sessionId)
                 .then(response => response.text())
-                .then(data => {
-                    console.log("Page view logged:", data.viewCount);
-                })
+                .then(data => {})
                 .catch(error => console.error("Error logging page view:", error));
-        })();
+        };
+        updatePageView();
     </script>
 </html>
 
